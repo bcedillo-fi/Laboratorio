@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Dashboard Lab — Fertilidad Integral</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:#f5f5ed;color:#1a1a1a;min-height:100vh}
+.app{max-width:1200px;margin:0 auto;padding:0 1.5rem 3rem}
+
+.header{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 0 1rem;border-bottom:1px solid #e0e0d6}
+.header-left{display:flex;align-items:center;gap:12px}
+.logo{width:40px;height:40px;border-radius:9px;background:#304a75;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#f5f5ed;flex-shrink:0}
+.h-title{font-size:18px;font-weight:600;color:#1a1a1a}
+.h-sub{font-size:12px;color:#888;margin-top:2px}
+.h-status{display:flex;align-items:center;gap:6px;margin-top:3px}
+.dot{width:8px;height:8px;border-radius:50%;background:#bbb;flex-shrink:0}
+.dot.ok{background:#4a9e6f}.dot.err{background:#c94040}.dot.spin{background:#c8850a;animation:bl 1s infinite}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:.3}}
+.stext{font-size:11px;color:#888}
+.btn{padding:8px 20px;border:none;border-radius:20px;background:#304a75;font-size:13px;font-weight:500;cursor:pointer;color:#f5f5ed}
+.btn:hover{background:#3d5d8a}.btn:disabled{opacity:.5;cursor:not-allowed}
+
+.apibar{display:flex;gap:8px;align-items:center;padding:.875rem 0;border-bottom:1px solid #e0e0d6;flex-wrap:wrap}
+.flabel{font-size:12px;color:#888;white-space:nowrap}
+.sel{font-size:12px;padding:8px 10px;border-radius:8px;border:1px solid #ccc;background:#fff;color:#1a1a1a;outline:none;cursor:pointer}
+
+.tabs{display:flex;border-bottom:1px solid #e0e0d6;margin-top:.75rem}
+.tab{padding:10px 20px;font-size:14px;cursor:pointer;color:#888;border:none;border-bottom:2px solid transparent;background:none;font-family:inherit}
+.tab.on{color:#304a75;border-bottom-color:#304a75;font-weight:500}
+.tab:hover:not(.on){color:#1a1a1a}
+.panel{display:none;padding:1.25rem 0}.panel.on{display:block}
+
+.kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-bottom:1.25rem}
+.kcard{background:#fff;border:1px solid #e0e0d6;border-radius:10px;padding:.875rem 1rem;position:relative;overflow:hidden}
+.kcard.navy{border-left:4px solid #304a75;padding-left:.75rem}
+.kcard.gold{border-left:4px solid #c8a84b;padding-left:.75rem}
+.kcard.teal{border-left:4px solid #5b9ea0;padding-left:.75rem}
+.kcard.red{border-left:4px solid #c94040;padding-left:.75rem}
+.kcard.green{border-left:4px solid #4a9e6f;padding-left:.75rem}
+.klabel{font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:6px;line-height:1.3}
+.kval{font-size:26px;font-weight:300;color:#1a1a1a;line-height:1;letter-spacing:-1px}
+.kunit{font-size:14px;font-weight:400;color:#666;margin-left:1px}
+.ksub{font-size:11px;color:#aaa;margin-top:4px}
+.kbar{position:absolute;bottom:0;left:0;right:0;height:3px;background:#eee}
+.kbarfill{height:100%}
+.kbarfill.ok{background:#4a9e6f}.kbarfill.warn{background:#c8850a}.kbarfill.danger{background:#c94040}.kbarfill.navy{background:#304a75}
+
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:680px){.cgrid{grid-template-columns:1fr}}
+.ccard{background:#fff;border:1px solid #e0e0d6;border-radius:10px;padding:1.125rem 1.25rem}
+.chead{display:flex;align-items:center;justify-content:space-between;margin-bottom:.875rem;gap:8px;flex-wrap:wrap}
+.ctitle{font-size:14px;font-weight:500;color:#1a1a1a}
+.cwrap{position:relative;height:210px}
+.chips{display:flex;gap:4px;flex-wrap:wrap}
+.chip{padding:3px 9px;border-radius:10px;font-size:11px;border:1px solid #ddd;background:#fff;cursor:pointer;color:#777;font-family:inherit}
+.chip.on{background:#304a75;border-color:#304a75;color:#f5f5ed}
+.chip:hover:not(.on){background:#f0f0e8}
+
+.stitle{font-size:11px;font-weight:600;color:#999;margin:1.25rem 0 .625rem;letter-spacing:.5px;text-transform:uppercase}
+.twrap{overflow-x:auto;border:1px solid #e0e0d6;border-radius:10px;background:#fff;margin-bottom:1rem}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:500px}
+th{padding:9px 12px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:#999;background:#fafaf5;border-bottom:1px solid #e0e0d6;white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid #f0f0e8;color:#1a1a1a;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafaf5}
+.badge{display:inline-flex;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500}
+.badge.ok{background:#e6f4ed;color:#2a6e4a}.badge.warn{background:#fdf3dc;color:#7a4e00}
+.badge.danger{background:#fce8e8;color:#8b1a1a}.badge.neutral{background:#f0f0e8;color:#666}.badge.info{background:#e8edf5;color:#1e3c6e}
+
+.pgn{display:flex;gap:6px;align-items:center;margin-top:.75rem;justify-content:flex-end;font-size:12px;color:#888}
+.pgn button{padding:5px 12px;border-radius:6px;border:1px solid #ddd;background:#fff;cursor:pointer;font-size:12px;color:#444}
+.pgn button:hover:not(:disabled){background:#f0f0e8}.pgn button:disabled{opacity:.4;cursor:not-allowed}
+
+.empty{text-align:center;padding:3rem 1rem;color:#bbb;font-size:13px}
+.ebox{background:#fff;border:1px solid #e0e0d6;border-left:3px solid #c94040;border-radius:0 8px 8px 0;padding:.875rem 1rem;font-size:12px;color:#777;margin:.5rem 0;line-height:1.6}
+.sk{background:#e8e8e0;border-radius:8px;animation:sk 1.1s ease-in-out infinite alternate}
+@keyframes sk{from{opacity:.5}to{opacity:1}}
+
+.balert{display:flex;gap:10px;background:#fff;border:1px solid #e0e0d6;border-left:3px solid #c94040;border-radius:0 8px 8px 0;padding:.875rem 1rem;font-size:12px;color:#555;line-height:1.6;margin-bottom:1rem}
+.bgrid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:1rem}
+.brow{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.blbl{width:90px;text-align:right;color:#777;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;flex-shrink:0}
+.btrack{flex:1;background:#ebebeb;border-radius:3px;height:7px}
+.bfill{height:100%;border-radius:3px;background:#304a75}.bfill.teal{background:#5b9ea0}
+.bcnt{font-size:11px;color:#aaa;min-width:28px;text-align:right;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo">FI</div>
+    <div>
+      <div class="h-title">Dashboard Lab</div>
+      <div class="h-sub">BigQuery · Fertilidad Integral · <span id="hfecha"></span></div>
+      <div class="h-status"><div class="dot" id="dot"></div><span class="stext" id="stxt">Sin conectar</span></div>
+    </div>
+  </div>
+  <button class="btn" id="btnLoad" onclick="cargar()">&#8635; Cargar datos</button>
+</div>
+
+<div class="apibar">
+  <span class="flabel">A&ntilde;o:</span>
+  <select class="sel" id="fanio">
+    <option value="2026">2026</option>
+    <option value="2025">2025</option>
+    <option value="2024">2024</option>
+    <option value="2023">2023</option>
+    <option value="todos">Todos</option>
+  </select>
+  <span class="flabel">Cl&iacute;nica:</span>
+  <select class="sel" id="fclinica">
+    <option value="">Todas</option>
+    <option value="FERTILIDAD INTEGRAL Ciudad de México">CDMX</option>
+    <option value="FERTILIDAD INTEGRAL Guadalajara">Guadalajara</option>
+    <option value="FERTILIDAD INTEGRAL Metepec">Metepec</option>
+  </select>
+</div>
+
+<div class="tabs">
+  <button class="tab on" onclick="tab('lab',this)">Laboratorio FIV</button>
+  <button class="tab" onclick="tab('banco',this)">Banco criopreservados</button>
+</div>
+
+<div id="panel-lab" class="panel on">
+  <div id="lab-content"><div class="empty">Presiona "Cargar datos" para comenzar</div></div>
+</div>
+<div id="panel-banco" class="panel">
+  <div id="banco-content"><div class="empty">Presiona "Cargar datos" para comenzar</div></div>
+</div>
+
+</div>
+<script>
+/* ── CONFIG ── */
+var PROJECT = 'curious-song-415720';
+var DATASET = 'Informacion_FI';
+var SA_EMAIL = 'dashboard-lab-fi@curious-song-415720.iam.gserviceaccount.com';
+var SA_KEY = '-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQD2ptV+lnkbLrd0\nLLfkxP2hCS/Jw4pTkMgXx6yXziMmIybM2Hrg9yX+QXZ0xSFHVCu2PcR9XQiVlKLL\nw8lmxsOgMoN2gCFltHmYd1p7blS0ZMlnx2iEFrelctLZOmEQusuC24LO/IXrDbcG\n8Uc4tj0pgSvMCo9br3doQVWp3v5jAyYGD8EAZjbhbDot9+7LC0LMcUVs/p0mk2sr\ntdcXT3IKP37tpxOkUD6cWqb390D3anu7WuYlBna2blcX3J2950ah+WIsm2KCU680\nLd6SYQA9YNjP4GbDVD3+RtA7t3ml9Lg+XzsKTGPKiUMtLngLJsn0WXWo0QiZJCMH\nAtMiAOz5AgMBAAECggEAJupDnOlYyjUgtK+pg+qgqZutcoPreyvIphfW30yitw2s\nvX0aRgw4blkdu2auzXY2P1aXfcAD7rW4ybVmPVT24HuXykaE/mrvFGMgX4EU1DFi\npYEMuGptJylqouNXFTCjk03W4Zlt95v+WJYQyp3WIIpEwriXzbttd4F3ZonMUQqK\n1V6bfhMuuEz3kp4WP4L8wW3VHIsf+a9IJcVWa+xv18x46eyN8E4J8l0JIr6bk2po\nU58ff5IqMnbeH5rAUCGSofx5xhcm/yNjmPwAjFGyB1+eaUTHacJcqo3v1eCHla1P\nMhEz3h3SAFcZEa8myTXnMlIvpWEjdzzs1Zz+wOKbQQKBgQD9xKxYlLe9FJ3OFcYi\nz8Mtw5hHhEnjzoJmRYyoJjod8+Utgp5xuFSvme4o4NVpA5hXfYD6KEA7o3YclUDC\nYe5cyL4C1tIXHRKc6CPEBYhuLDWeUHGi6y8Ga08ZEldPlvK6R03BT+K+LvIR0S0b\nF/r7SjR/AhcnMTBWnrbP8brRXQKBgQD40iOCpb9kBozdmLK3V9jDORyRghoe7oQM\ny66syANPbUu+GMzR7nWC6uERD4NVYIKGh/EErc3QAQSxMH0oofEe15IIOL8qjxYG\nAfkIOJzLrYBA6bcKyb3doSn3Ct1OQAHFutiuh5EoecsNGBA01SWoO/xPsU2d2zeJ\nAJBvYoyETQKBgQD26x8nMc12VVEW7WjVBoNLTD4nmDitSIrpKFMsacWyz1X3aljx\nHgKIuqZZcCs2+yCIQL32qqOVY//Q4AkbGl7sOQdpi8zwYIFz2wyx9xBA4xNo760i\ncORYwqE8K/R4pM+ZITgvGKPvmY5Ad+ADtNmpGRLrYgVVRS9bmSMYQoUcoQKBgQCI\nvXMmaVA0+CSR40jT2UMWhlxc2tLgDNQk9AqaiZDIJZhqb9afyBxsRghKB+x1DwSs\nSij6GUnx9Z1OgwdFPTn1aSKnwgfMq7W+t3bUPchtZnwFMGuXUic1lUwqp53XUvWm\nZHiP8ZCkXcpo98BwSHLZcZ3Hbfjpt39dmyHFFLOEQQKBgQCqKIHicYa3aHWS/vIp\nPksFO+KEYuY9j8ZWWVCo6zuINwAfZQuENH+xPxxFtDFKaldMcxG9tx0OZTZ7nZrX\nSuCL87A59sCYBWIamy88jJoUcTDjy5OVjr5yON/GeUvPVrf8Wm6BQJz0Kqkvr3az\nvEBdrTZzjrX+IVTZvg68cgyA9g==\n-----END PRIVATE KEY-----\n';
+
+var MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+var NAVY='#304a75', TEAL='#5b9ea0';
+var TEC=['FIV Clásica','ICSI','MIXTA (FIV / ICSI)'];
+var CHS={};
+var tecActiva='todos';
+var DATA_LAB=[], DATA_BANCO=[], DATA_PRUEBAS=[];
+var bancoPage=1, PG=20;
+
+document.getElementById('hfecha').textContent=new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'});
+
+/* ── STATUS ── */
+function st(s,t){
+  document.getElementById('dot').className='dot '+(s==='ok'?'ok':s==='err'?'err':s==='spin'?'spin':'');
+  document.getElementById('stxt').textContent=t;
+}
+
+/* ── TABS ── */
+function tab(id,el){
+  document.querySelectorAll('.tab').forEach(function(e){e.classList.remove('on');});
+  el.classList.add('on');
+  document.querySelectorAll('.panel').forEach(function(e){e.classList.remove('on');});
+  document.getElementById('panel-'+id).classList.add('on');
+}
+
+/* ── JWT / BIGQUERY AUTH ── */
+function b64url(str){ return btoa(str).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+function b64urlU8(u8){ var b=''; u8.forEach(function(x){b+=String.fromCharCode(x);}); return b64url(b); }
+
+async function getToken(){
+  var now=Math.floor(Date.now()/1000);
+  var header=b64url(JSON.stringify({alg:'RS256',typ:'JWT'}));
+  var claim=b64url(JSON.stringify({
+    iss:SA_EMAIL, scope:'https://www.googleapis.com/auth/bigquery',
+    aud:'https://oauth2.googleapis.com/token', iat:now, exp:now+3600
+  }));
+  var msg=header+'.'+claim;
+  /* import key */
+  var pemBody=SA_KEY.replace(/-----[^-]+-----/g,'').replace(/\s/g,'');
+  var der=Uint8Array.from(atob(pemBody),function(c){return c.charCodeAt(0);});
+  var key=await crypto.subtle.importKey('pkcs8',der,{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['sign']);
+  var sig=await crypto.subtle.sign('RSASSA-PKCS1-v1_5',key,new TextEncoder().encode(msg));
+  var jwt=msg+'.'+b64urlU8(new Uint8Array(sig));
+  var res=await fetch('https://oauth2.googleapis.com/token',{
+    method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion='+jwt
+  });
+  var j=await res.json();
+  if(!j.access_token) throw new Error('Auth error: '+JSON.stringify(j));
+  return j.access_token;
+}
+
+async function bqQuery(token, sql){
+  var res=await fetch('https://bigquery.googleapis.com/bigquery/v2/projects/'+PROJECT+'/queries',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+    body:JSON.stringify({query:sql,useLegacySql:false,timeoutMs:30000,maxResults:10000})
+  });
+  var j=await res.json();
+  if(j.error) throw new Error(j.error.message);
+  /* parse rows */
+  var fields=(j.schema&&j.schema.fields)||[];
+  return (j.rows||[]).map(function(row){
+    var obj={};
+    fields.forEach(function(f,i){ obj[f.name]=row.f[i].v; });
+    return obj;
+  });
+}
+
+/* ── CARGA ── */
+async function cargar(){
+  var btn=document.getElementById('btnLoad'); btn.disabled=true;
+  skel();
+  try{
+    st('spin','Autenticando con BigQuery...');
+    var token=await getToken();
+    st('spin','Cargando laboratorio...');
+    var anio=document.getElementById('fanio').value;
+    var clinica=document.getElementById('fclinica').value;
+    var whereAnio=anio==='todos'?'':"AND fecha LIKE '"+anio+"%'";
+    var whereCli=clinica?"AND del_name='"+clinica+"'":'';
+
+    var sqlLab="SELECT id,fecha,del_name,his_nom,esti_esti_tecnica_name,prepa_end_ovo_tec_fec_name,"+
+      "ovo_tt,ovo_mii,ovo_fec,ovo_fec_2pn,embri_tt,embri_a,embri_b,embri_trans,embri_cong,"+
+      "blasto_tt,dgp,esti_emb,prepa_end_emb "+
+      "FROM `"+PROJECT+"."+DATASET+".Laboratorio` "+
+      "WHERE 1=1 "+whereAnio+" "+whereCli+" ORDER BY fecha DESC LIMIT 5000";
+
+    DATA_LAB=await bqQuery(token,sqlLab);
+
+    st('spin','Cargando banco...');
+    var sqlBanco="SELECT id,his_nom,tp_name,del_name,fec_entra,fec_renova "+
+      "FROM `"+PROJECT+"."+DATASET+".banco` "+
+      "WHERE 1=1 "+whereCli+" ORDER BY fec_renova ASC LIMIT 3000";
+    try{ DATA_BANCO=await bqQuery(token,sqlBanco); } catch(e){ DATA_BANCO=[]; }
+
+    st('spin','Cargando pruebas de embarazo...');
+    var whereAnioDate=anio==='todos'?'':"AND CAST(fecha AS STRING) LIKE '"+anio+"%'";
+    var whereCliPru=clinica?"AND del_name='"+clinica+"'":'';
+    var sqlPru="SELECT fecha,tip_tra_name,resultado,del_name "+
+      "FROM `"+PROJECT+"."+DATASET+".Pruebas Embarazo` "+
+      "WHERE tip_tra_name IN ('Prep. Endometrial','FIV Estimulación') "+
+      whereAnioDate+" "+whereCliPru+" ORDER BY fecha";
+    try{ DATA_PRUEBAS=await bqQuery(token,sqlPru); } catch(e){ DATA_PRUEBAS=[]; }
+
+    st('ok',DATA_LAB.length+' ciclos FIV · '+DATA_BANCO.length+' criopreservados');
+    tecActiva='todos'; bancoPage=1;
+    renderLab(); renderBanco();
+  }catch(e){
+    st('err',e.message);
+    document.getElementById('lab-content').innerHTML='<div class="ebox"><strong>Error:</strong> '+e.message+'</div>';
+  }
+  btn.disabled=false;
+}
+
+function skel(){
+  document.getElementById('lab-content').innerHTML=
+    '<div class="kgrid">'+Array(5).fill('<div class="sk" style="height:80px"></div>').join('')+'</div>'+
+    '<div class="cgrid">'+Array(4).fill('<div class="sk" style="height:260px"></div>').join('')+'</div>';
+}
+
+/* ── HELPERS ── */
+function n(v){return parseFloat(v)||0;}
+function fmtD(s){return s?String(s).split('T')[0]:'—';}
+function pct(a,b){return b>0?Math.round(a/b*100):0;}
+function sem(v,g,w){return v>=g?'ok':v>=w?'warn':'danger';}
+function sembl(v,g,w){var s=sem(v,g,w);return s==='ok'?'green':s==='warn'?'gold':'red';}
+
+function getTec(r){
+  var t1=(r.esti_esti_tecnica_name||'').trim();
+  var t2=(r.prepa_end_ovo_tec_fec_name||'').trim();
+  if(t1) return t1;
+  if(t2) return t2;
+  return '';
+}
+
+function filtrarTec(data, tec){
+  tec=tec||'todos';
+  return data.filter(function(r){
+    var t=getTec(r);
+    if(tec==='todos') return TEC.indexOf(t)>=0;
+    return t===tec;
+  });
+}
+
+/* ── SERIES MENSUALES ── */
+function porMes(data, numFn, denFn){
+  var g={};
+  data.forEach(function(r){
+    var f=String(r.fecha||''); if(!f||f==='null') return;
+    var m=parseInt(f.substr(5,2),10)-1; if(isNaN(m)) return;
+    if(!g[m]) g[m]={a:0,b:0};
+    g[m].a+=numFn(r); g[m].b+=denFn(r);
+  });
+  var labels=[],vals=[];
+  Object.keys(g).sort(function(a,b){return+a-+b;}).forEach(function(m){
+    labels.push(MESES[+m]);
+    vals.push(g[m].b>0?Math.round(g[m].a/g[m].b*100):null);
+  });
+  return {labels:labels,vals:vals};
+}
+
+function porMesCnt(data,filterFn){
+  var g={};
+  data.forEach(function(r){
+    if(filterFn&&!filterFn(r)) return;
+    var f=String(r.fecha||''); if(!f||f==='null') return;
+    var m=parseInt(f.substr(5,2),10)-1; if(isNaN(m)) return;
+    g[m]=(g[m]||0)+1;
+  });
+  var labels=[],vals=[];
+  Object.keys(g).sort(function(a,b){return+a-+b;}).forEach(function(m){
+    labels.push(MESES[+m]); vals.push(g[m]);
+  });
+  return {labels:labels,vals:vals};
+}
+
+/* ── CHARTS ── */
+function killChart(id){if(CHS[id]){CHS[id].destroy();delete CHS[id];}}
+
+function lineChart(id,labels,vals,color){
+  killChart(id);
+  var ctx=document.getElementById(id); if(!ctx) return;
+  CHS[id]=new Chart(ctx,{
+    type:'line',
+    data:{labels:labels,datasets:[{
+      data:vals,borderColor:color||NAVY,borderWidth:2,
+      pointBorderColor:color||NAVY,pointBackgroundColor:'#fff',
+      pointRadius:4,pointHoverRadius:6,tension:0.1,spanGaps:true
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},
+        tooltip:{backgroundColor:'#fff',borderColor:'#ddd',borderWidth:1,titleColor:'#333',bodyColor:'#555',
+          callbacks:{label:function(c){return ' '+c.parsed.y+'%';}}}},
+      scales:{
+        x:{grid:{color:'#f0f0e8'},ticks:{font:{size:11},color:'#999'}},
+        y:{grid:{color:'#f0f0e8'},min:0,max:100,ticks:{font:{size:11},color:'#999',callback:function(v){return v+'%';}}}
+      }
+    }
+  });
+}
+
+function twoLineChart(id,labels,vals1,vals2,label1,label2){
+  killChart(id);
+  var ctx=document.getElementById(id); if(!ctx) return;
+  CHS[id]=new Chart(ctx,{
+    type:'line',
+    data:{labels:labels,datasets:[
+      {label:label1,data:vals1,borderColor:NAVY,borderWidth:2,pointBorderColor:NAVY,
+       pointBackgroundColor:'#fff',pointRadius:4,pointHoverRadius:6,tension:0.1,spanGaps:true},
+      {label:label2,data:vals2,borderColor:TEAL,borderWidth:2,pointBorderColor:TEAL,
+       pointBackgroundColor:'#fff',pointRadius:4,pointHoverRadius:6,tension:0.1,spanGaps:true,borderDash:[4,3]}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:'#fff',borderColor:'#ddd',borderWidth:1,titleColor:'#333',bodyColor:'#555',
+          callbacks:{label:function(c){return ' '+c.dataset.label+': '+c.parsed.y+'%';}}}
+      },
+      scales:{
+        x:{grid:{color:'#f0f0e8'},ticks:{font:{size:11},color:'#999'}},
+        y:{grid:{color:'#f0f0e8'},min:0,max:100,ticks:{font:{size:11},color:'#999',callback:function(v){return v+'%';}}}
+      }
+    }
+  });
+}
+
+function barChart(id,labels,vals,color){
+  killChart(id);
+  var ctx=document.getElementById(id); if(!ctx) return;
+  CHS[id]=new Chart(ctx,{
+    type:'bar',
+    data:{labels:labels,datasets:[{
+      data:vals,backgroundColor:(color||TEAL)+'bb',borderColor:color||TEAL,borderWidth:1,borderRadius:3
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},
+        tooltip:{backgroundColor:'#fff',borderColor:'#ddd',borderWidth:1,titleColor:'#333',bodyColor:'#555'}},
+      scales:{
+        x:{grid:{color:'#f0f0e8'},ticks:{font:{size:11},color:'#999'}},
+        y:{grid:{color:'#f0f0e8'},ticks:{font:{size:11},color:'#999'},beginAtZero:true}
+      }
+    }
+  });
+}
+
+/* ── KPI CARD ── */
+function kcard(label,val,unit,sub,bl,bp,bc){
+  bl=bl||''; bp=bp===undefined?-1:bp; bc=bc||'navy';
+  return '<div class="kcard'+(bl?' '+bl:'')+'">'+
+    '<div class="klabel">'+label+'</div>'+
+    '<div class="kval">'+val+(unit?'<span class="kunit">'+unit+'</span>':'')+'</div>'+
+    (sub?'<div class="ksub">'+sub+'</div>':'')+
+    (bp>=0?'<div class="kbar"><div class="kbarfill '+bc+'" style="width:'+bp+'%"></div></div>':'')+
+    '</div>';
+}
+
+/* ── CHIPS ── */
+function chipsHTML(activa){
+  var opts=[['todos','Todos'],['FIV Clásica','FIV Clásica'],['ICSI','ICSI'],['MIXTA (FIV / ICSI)','Mixta']];
+  return '<div class="chips">'+opts.map(function(o){
+    return '<button class="chip'+(activa===o[0]?' on':'')+'" onclick="setTec(\''+o[0]+'\')">'+o[1]+'</button>';
+  }).join('')+'</div>';
+}
+
+function setTec(t){
+  tecActiva=t;
+  document.querySelectorAll('.chip').forEach(function(c){
+    var map={'Todos':'todos','FIV Clásica':'FIV Clásica','ICSI':'ICSI','Mixta':'MIXTA (FIV / ICSI)'};
+    c.classList.toggle('on', map[c.textContent.trim()]===t);
+  });
+  var fec=filtrarTec(DATA_LAB,tecActiva);
+  var s=porMes(fec,function(r){return n(r.ovo_fec_2pn);},function(r){return n(r.ovo_mii);});
+  lineChart('ch-fec',s.labels,s.vals,tecActiva==='ICSI'?TEAL:NAVY);
+}
+
+/* ── RENDER LAB ── */
+function renderLab(){
+  var data=DATA_LAB;
+  if(!data.length){
+    document.getElementById('lab-content').innerHTML='<div class="empty">Sin datos</div>';
+    return;
+  }
+  var dataFec=filtrarTec(data,'todos');
+
+  /* totales */
+  var totOvo=0,totMII=0,totFec=0,totBlasto=0,totTrans=0,totCong=0,cntDGP=0;
+  data.forEach(function(r){
+    totOvo+=n(r.ovo_tt); totBlasto+=n(r.blasto_tt);
+    totTrans+=n(r.embri_trans); totCong+=n(r.embri_cong);
+    var dgp=String(r.dgp||'').toLowerCase();
+    if(dgp==='true'||dgp==='1') cntDGP++;
+    totMII+=n(r.ovo_mii); /* madurez usa todo */
+  });
+  var totFecAll=0, totMIIfec=0;
+  dataFec.forEach(function(r){ totFecAll+=n(r.ovo_fec_2pn); totMIIfec+=n(r.ovo_mii); });
+
+  /* series lab */
+  var sMad   =porMes(data,   function(r){return n(r.ovo_mii);},    function(r){return n(r.ovo_tt);});
+  var sFec   =porMes(dataFec,function(r){return n(r.ovo_fec_2pn);},function(r){return n(r.ovo_mii);});
+  var sBlasto=porMes(dataFec,function(r){return n(r.blasto_tt);},  function(r){return n(r.ovo_fec_2pn);});
+  var sBcal  =porMes(data,   function(r){return n(r.embri_trans)+n(r.embri_cong);},function(r){return n(r.blasto_tt);});
+  var sBiop  =porMesCnt(data,function(r){var d=String(r.dgp||'').toLowerCase();return d==='true'||d==='1';});
+
+  var tMad  =pct(totMII,totOvo);
+  var tFec  =pct(totFecAll,totMIIfec);
+  var tBlasto=pct(totBlasto,totFecAll);
+  var tBcal =pct(totTrans+totCong,totBlasto);
+
+  /* series embarazo desde Pruebas Embarazo */
+  var gCrio={}, gFiv={};
+  DATA_PRUEBAS.forEach(function(r){
+    var f=String(r.fecha||''); if(!f||f==='null') return;
+    var m=parseInt(f.substr(5,2),10)-1; if(isNaN(m)) return;
+    var pos=r.resultado==='Positivo'?1:0;
+    if(r.tip_tra_name==='Prep. Endometrial'){
+      if(!gCrio[m]) gCrio[m]={p:0,d:0};
+      gCrio[m].p+=pos; gCrio[m].d++;
+    } else if(r.tip_tra_name==='FIV Estimulación'){
+      if(!gFiv[m]) gFiv[m]={p:0,d:0};
+      gFiv[m].p+=pos; gFiv[m].d++;
+    }
+  });
+
+  /* unir meses de ambas series */
+  var mesesSet={};
+  Object.keys(gCrio).forEach(function(m){mesesSet[m]=1;});
+  Object.keys(gFiv).forEach(function(m){mesesSet[m]=1;});
+  var allMeses=Object.keys(mesesSet).sort(function(a,b){return+a-+b;});
+  var sEmbaLabels=allMeses.map(function(m){return MESES[+m];});
+  var sEmbaCrio=allMeses.map(function(m){var g=gCrio[m];return g&&g.d>0?Math.round(g.p/g.d*100):null;});
+  var sEmbaFiv=allMeses.map(function(m){var g=gFiv[m];return g&&g.d>0?Math.round(g.p/g.d*100):null;});
+
+  /* KPI embarazo global */
+  var crioPosT=0,crioDenT=0,fivPosT=0,fivDenT=0;
+  DATA_PRUEBAS.forEach(function(r){
+    var pos=r.resultado==='Positivo'?1:0;
+    if(r.tip_tra_name==='Prep. Endometrial'){crioPosT+=pos;crioDenT++;}
+    else if(r.tip_tra_name==='FIV Estimulación'){fivPosT+=pos;fivDenT++;}
+  });
+  var tEmbaCrio=crioDenT>0?pct(crioPosT,crioDenT):null;
+  var tEmbaFiv=fivDenT>0?pct(fivPosT,fivDenT):null;
+
+  /* html */
+  var html='';
+  html+='<div class="kgrid">';
+  html+=kcard('Ciclos FIV',data.length,'','total registros','navy');
+  html+=kcard('Tasa madurez',tMad,'%',totMII+'/'+totOvo+' ovocitos',sembl(tMad,75,60),tMad,sem(tMad,75,60));
+  html+=kcard('Fecundaci&oacute;n',tFec,'%',totFecAll+'/'+totMIIfec+' 2PN',sembl(tFec,70,55),tFec,sem(tFec,70,55));
+  html+=kcard('Tasa blastos',tBlasto,'%',totBlasto+'/'+totFecAll+' fec.',sembl(tBlasto,50,35),tBlasto,sem(tBlasto,50,35));
+  html+=kcard('Blastos buena calidad',tBcal,'%',(totTrans+totCong)+'/'+totBlasto,sembl(tBcal,60,45),tBcal,sem(tBcal,60,45));
+  html+=kcard('Emb. biopsiados',cntDGP,'','de '+data.length+' ciclos','teal');
+  if(tEmbaCrio!==null) html+=kcard('Emb. cri&oacute;',tEmbaCrio,'%',crioPosT+'/'+crioDenT+' transf.',sembl(tEmbaCrio,50,35),tEmbaCrio,sem(tEmbaCrio,50,35));
+  if(tEmbaFiv!==null)  html+=kcard('Emb. FIV estim.',tEmbaFiv,'%',fivPosT+'/'+fivDenT+' transf.',sembl(tEmbaFiv,40,25),tEmbaFiv,sem(tEmbaFiv,40,25));
+  html+='</div>';
+
+  html+='<div class="cgrid">';
+  html+='<div class="ccard"><div class="chead"><span class="ctitle">Tasa madurez</span></div><div class="cwrap"><canvas id="ch-mad"></canvas></div></div>';
+  html+='<div class="ccard"><div class="chead"><span class="ctitle">Fecundaci&oacute;n por t&eacute;cnica</span>'+chipsHTML(tecActiva)+'</div><div class="cwrap"><canvas id="ch-fec"></canvas></div></div>';
+  html+='</div>';
+  html+='<div class="cgrid">';
+  html+='<div class="ccard"><div class="chead"><span class="ctitle">Tasa blastos</span></div><div class="cwrap"><canvas id="ch-blasto"></canvas></div></div>';
+  html+='<div class="ccard"><div class="chead"><span class="ctitle">Blastos buena calidad</span></div><div class="cwrap"><canvas id="ch-bcal"></canvas></div></div>';
+  html+='</div>';
+  html+='<div class="cgrid">';
+  html+='<div class="ccard"><div class="chead"><span class="ctitle">Embriones biopsiados (DGP)</span></div><div class="cwrap"><canvas id="ch-biop"></canvas></div></div>';
+  html+='<div class="ccard"><div class="chead"><span class="ctitle">Tasa de embarazo &mdash; FIV estimulaci&oacute;n</span></div><div class="cwrap"><canvas id="ch-emba-fiv"></canvas></div></div>';
+  html+='</div>';
+  html+='<div class="cgrid">';
+  html+='<div class="ccard"><div class="chead"><span class="ctitle">Tasa de embarazo &mdash; Cri&oacute;transferencia</span></div><div class="cwrap"><canvas id="ch-emba-crio"></canvas></div></div>';
+  html+='<div></div>';
+  html+='</div>';
+
+  html+='<div class="stitle">Detalle de ciclos</div>';
+  html+='<div class="twrap"><table><thead><tr>'+
+    '<th>Paciente</th><th>Fecha</th><th>Cl&iacute;nica</th><th>T&eacute;cnica</th>'+
+    '<th>Ovo</th><th>MII</th><th>2PN</th><th>Blasto</th><th>Trans.</th><th>Cong.</th><th>DGP</th>'+
+    '</tr></thead><tbody>';
+  data.slice(0,50).forEach(function(r){
+    var tec=getTec(r)||'—';
+    var dgp=String(r.dgp||'').toLowerCase()==='true'||String(r.dgp||'')==='1';
+    html+='<tr>'+
+      '<td>'+(r.his_nom||'—')+'</td>'+
+      '<td>'+fmtD(r.fecha)+'</td>'+
+      '<td>'+(r.del_name||'—')+'</td>'+
+      '<td style="font-size:11px">'+tec+'</td>'+
+      '<td>'+(r.ovo_tt||'—')+'</td><td>'+(r.ovo_mii||'—')+'</td>'+
+      '<td>'+(r.ovo_fec_2pn||'—')+'</td><td>'+(r.blasto_tt||'—')+'</td>'+
+      '<td>'+(r.embri_trans||'—')+'</td><td>'+(r.embri_cong||'—')+'</td>'+
+      '<td><span class="badge '+(dgp?'info':'neutral')+'">'+(dgp?'Sí':'No')+'</span></td>'+
+      '</tr>';
+  });
+  html+='</tbody></table></div>';
+  if(data.length>50) html+='<div style="font-size:11px;color:#aaa;text-align:right;margin-top:4px">Mostrando 50 de '+data.length+'</div>';
+
+  document.getElementById('lab-content').innerHTML=html;
+  setTimeout(function(){
+    lineChart('ch-mad',   sMad.labels,   sMad.vals,   NAVY);
+    lineChart('ch-fec',   sFec.labels,   sFec.vals,   NAVY);
+    lineChart('ch-blasto',sBlasto.labels,sBlasto.vals,NAVY);
+    lineChart('ch-bcal',  sBcal.labels,  sBcal.vals,  TEAL);
+    barChart( 'ch-biop',      sBiop.labels,   sBiop.vals,   TEAL);
+    if(sEmbaCrio.filter(function(v){return v!==null;}).length)  lineChart('ch-emba-crio', sEmbaLabels, sEmbaCrio, NAVY);
+    if(sEmbaFiv.filter(function(v){return v!==null;}).length)   lineChart('ch-emba-fiv',  sEmbaLabels, sEmbaFiv,  TEAL);
+  },50);
+}
+
+/* ── RENDER BANCO ── */
+function renderBanco(){
+  var data=DATA_BANCO;
+  if(!data.length){document.getElementById('banco-content').innerHTML='<div class="empty">Sin datos de banco</div>';return;}
+  var today=new Date();
+  var venc=0,prox=0,vig=0;
+  data.forEach(function(r){
+    if(!r.fec_renova||r.fec_renova==='null') return;
+    var d=Math.floor((new Date(r.fec_renova)-today)/864e5);
+    if(d<0) venc++; else if(d<=90) prox++; else vig++;
+  });
+  var byTp={},byDel={};
+  data.forEach(function(r){
+    var t=r.tp_name||'N/D'; byTp[t]=(byTp[t]||0)+1;
+    var d=r.del_name||'N/D'; byDel[d]=(byDel[d]||0)+1;
+  });
+  function brows(obj,cls){
+    var max=Math.max.apply(null,Object.values(obj).concat(1));
+    return Object.entries(obj).sort(function(a,b){return b[1]-a[1];}).map(function(e){
+      return '<div class="brow"><span class="blbl" title="'+e[0]+'">'+e[0]+'</span>'+
+        '<div class="btrack"><div class="bfill '+(cls||'')+'" style="width:'+Math.round(e[1]/max*100)+'%"></div></div>'+
+        '<span class="bcnt">'+e[1]+'</span></div>';
+    }).join('');
+  }
+  var page=bancoPage,sliced=data.slice((page-1)*PG,page*PG),totalPages=Math.max(1,Math.ceil(data.length/PG));
+  var html='';
+  html+='<div class="kgrid">';
+  html+=kcard('Total',data.length,'','muestras en banco','navy');
+  html+=kcard('Vencidas',venc,'','renovaci\u00f3n expirada','red',pct(venc,data.length),'danger');
+  html+=kcard('Pr\u00f3ximas a vencer',prox,'','en 90 d\u00edas','gold',pct(prox,data.length),'warn');
+  html+=kcard('Vigentes',vig,'','sin alerta','green',pct(vig,data.length),'ok');
+  html+='</div>';
+  if(venc>0||prox>0) html+='<div class="balert"><div>&#9888;</div><div><strong>'+venc+' vencidas</strong> y <strong>'+prox+' pr\u00f3ximas.</strong> Contactar pacientes para renovaci\u00f3n.</div></div>';
+  html+='<div class="bgrid2">';
+  html+='<div class="ccard"><div class="ctitle" style="margin-bottom:.875rem">Por tipo de muestra</div>'+brows(byTp,'teal')+'</div>';
+  html+='<div class="ccard"><div class="ctitle" style="margin-bottom:.875rem">Por cl\u00ednica</div>'+brows(byDel,'')+'</div>';
+  html+='</div>';
+  html+='<div class="stitle">Detalle del banco</div>';
+  html+='<div class="twrap"><table><thead><tr>'+
+    '<th>Paciente</th><th>Tipo</th><th>Cl\u00ednica</th><th>Entrada</th><th>Renovaci\u00f3n</th><th>Estado</th>'+
+    '</tr></thead><tbody>';
+  sliced.forEach(function(r){
+    var fR=r.fec_renova&&r.fec_renova!=='null'?new Date(r.fec_renova):null;
+    var d=fR?Math.floor((fR-today)/864e5):null;
+    var cls,lbl;
+    if(d===null){cls='neutral';lbl='Sin fecha';}
+    else if(d<0){cls='danger';lbl='Vencida';}
+    else if(d<=90){cls='warn';lbl=d+'d';}
+    else{cls='ok';lbl='Vigente';}
+    html+='<tr>'+
+      '<td>'+(r.his_nom||'—')+'</td><td>'+(r.tp_name||'—')+'</td>'+
+      '<td>'+(r.del_name||'—')+'</td><td>'+fmtD(r.fec_entra)+'</td>'+
+      '<td>'+fmtD(r.fec_renova)+'</td>'+
+      '<td><span class="badge '+cls+'">'+lbl+'</span></td></tr>';
+  });
+  html+='</tbody></table></div>';
+  html+='<div class="pgn">'+
+    '<button onclick="bancoPage=Math.max(1,bancoPage-1);renderBanco()" '+(page<=1?'disabled':'')+'>&#8249; Anterior</button>'+
+    '<span>P\u00e1g. '+page+' de '+totalPages+' &middot; '+data.length+' muestras</span>'+
+    '<button onclick="bancoPage=Math.min('+totalPages+',bancoPage+1);renderBanco()" '+(page>=totalPages?'disabled':'')+'>Siguiente &#8250;</button>'+
+    '</div>';
+  document.getElementById('banco-content').innerHTML=html;
+}
+</script>
+</body>
+</html>
